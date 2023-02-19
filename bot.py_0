@@ -1,0 +1,118 @@
+import datetime
+import os
+import random
+import re
+
+import markovify
+import nltk  # nltk.download("punkt") # nltk.download("wordnet")
+import tweepy
+from nltk.tokenize import word_tokenize
+
+# from keys import *
+# Your app's bearer token can be found under the Authentication Tokens section of the Keys and Tokens tab of your app, under the Twitter Developer Portal Projects & Apps page at https://developer.twitter.com/en/portal/projects-and-apps
+bearer_token = ""
+# Your app's API/consumer key and secret can be found under the Consumer Keys section of the Keys and Tokens tab of your app, under the Twitter Developer Portal Projects & Apps page at https://developer.twitter.com/en/portal/projects-and-apps
+consumer_key = ""
+consumer_secret = ""
+# Your account's (the app owner's account's) access token and secret for your app can be found under the Authentication Tokens section of the Keys and Tokens tab of your app, under the Twitter Developer Portal Projects & Apps page at https://developer.twitter.com/en/portal/projects-and-apps
+access_token = ""
+access_token_secret = ""
+# # You can authenticate as your app with just your bearer token
+# client = tweepy.Client(bearer_token=bearer_token)
+# # You can provide the consumer key and secret with the access token and access # token secret to authenticate as a user
+# client = tweepy.Client( consumer_key=consumer_key, consumer_secret=consumer_secret, access_token=access_token, access_token_secret=access_token_secret,)
+
+# Create the post and log to a file.
+
+
+def process_input_text():
+    # # Perform stemming.
+    # stemmer = nltk.stem.PorterStemmer()
+    # for tokens in corpus_tokens:
+    #     stemmed_words = [stemmer.stem(token) for token in tokens]
+    #     # print(stemmed_words)
+    #     # Perform lemmatization
+    #     lemmatizer = nltk.stem.WordNetLemmatizer()
+    #     lemmatized_words = [lemmatizer.lemmatize(token) for token in tokens]
+    #     # print(lemmatized_words)
+    # return input_text
+    pass
+
+
+# Create the post and log to a file.
+
+
+def generate_model(input_text):
+    # Decide if it's Spock is being a Santa at twilight. 00:00:00 02:00:00
+    t = datetime.datetime.now().time()
+    start_t = datetime.time(0, 0, 0)
+    end_t = datetime.time(2, 0, 0)
+
+    # state\_size: An integer, indicating the number of words in the model's state.
+    if start_t <= t <= end_t:
+        state_size = 1
+        text_model = markovify.Text(input_text, state_size=state_size)
+    else:
+        state_size = random.randrange(1, 3)
+        text_model = markovify.Text(input_text, state_size=state_size)
+
+    return (
+        text_model,
+        state_size,
+    )
+
+
+def main(corpus):
+    (text_model, stack_size) = generate_model(corpus)
+    # Create a sentence limited to 140 chars.
+    if stack_size == 1:
+        output_text = text_model.make_short_sentence(127)  # + "#SleepySpock"
+    else:
+        output_text = text_model.make_short_sentence(140)
+    return (text_model, output_text)
+
+
+# ^\d+[.)]?$ # remove serial number
+# ^\d+[\.\)]\.?$ # remove `serial number` and `.` after that.
+# words = [word for word in words if not re.match(r"^\d+[.)]?$", word)]
+def remove_serial_num_re(sentences):
+    """Remove the serial number from the list of words"""
+    cleaned_sentences = [re.sub(r"^\d+\.\s*", "", s) for s in sentences]
+    return cleaned_sentences
+
+
+def read_source_file():
+    # Read the source text file
+    try:
+        # Read file.
+        with open(os.path.dirname(__file__) + "/txt/spock.txt") as f:
+            # Sample list of tokenized words with serial number
+            input_text = f.read()
+    except OSError as e:
+        print(f"Error: Failed to read source text file. {e}")
+        return None
+    return input_text
+
+
+if __name__ == "__main__":
+    input_text = read_source_file()
+    if input_text is not None:
+        corpus = remove_serial_num_re(input_text.splitlines())
+        print(corpus)
+        # This is what corpus is like.
+        """
+['"Insufficient facts always invite danger."', '"Computers make excellent and effici
+ent servants, but I have no wish to serve under them."', '"The needs of the many out
+weigh the needs of the few, or the one."', '"In critical moments, men sometimes see
+exactly what they wish to see."', '"Without followers, evil cannot spread."', '"Live
+ long and.....
+        """
+        (text_model, output_text) = main(corpus)
+        print(text_model, output_text)
+        """
+           <markovify.text.Text object at 0x7f8c9ee5f910> These are the starship Enterprise.
+        """
+
+"""
+Code utlilized from https://github.com/ryansheppard/MarkovPicard
+"""

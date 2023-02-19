@@ -1,0 +1,166 @@
+import datetime
+import os
+import random
+import re
+
+import markovify
+
+corpus_backup = [
+    '"Insufficient facts always invite danger."',
+    '"Computers make excellent and efficient servants, but I have no wish to serve under them."',
+    '"The needs of the many outweigh the needs of the few, or the one."',
+    '"In critical moments, men sometimes see exactly what they wish to see."',
+    '"Without followers, evil cannot spread."',
+    '"Live long and prosper."',
+    '"It is curious how often you humans manage to obtain that which you do not want."',
+]
+
+def generate_sentence_no_recurse(text_model, max_chars, max_tries=100):
+    """
+    Generates a sentence using the given text model and limits it to max_chars characters.
+    """
+    print("no more recursw")
+    if max_chars < 20:
+        raise ValueError("max_chars should be at least 20")
+    if max_chars == 20:
+        # Return an empty string if max_chars is exactly 20, to avoid errors in markovify
+        return ""
+
+    tries = 0
+    while tries < max_tries:
+        # Use make_short_sentence if max_chars is less than or equal to 140
+        if max_chars <= 140:
+            sentence = text_model.make_short_sentence(
+                max_chars=max_chars, tries=max_tries
+            )
+        else:
+            # Use make_sentence if max_chars is greater than 140
+            sentence = text_model.make_sentence(tries=max_tries)
+
+        if sentence is not None:
+            # Add an ellipsis to the end of the sentence and return it
+            return sentence.strip() + "..."
+
+        # Increase the number of tries and decrease the max_chars value
+        tries += 1
+        max_chars -= 10
+
+    return None
+
+
+COUNTER_RECURSION = 0
+
+
+def generate_sentence_recursion(text_model, max_chars):
+    """
+    Generates a sentence using the given text model and limits it to max_chars characters.
+    """
+    id = 0
+    COUNTER_RECURSION = 1 + id
+    if COUNTER_RECURSION > 1:
+        print("recurse")
+        return generate_sentence_no_recurse(text_model=text_model, max_chars=max_chars)
+    if max_chars < 20:
+        raise ValueError("max_chars should be at least 20")
+    # Return an empty string if max_chars is exactly 20, to avoid errors in markovify
+    if max_chars == 20:
+        return ""
+
+    sentence = (
+        text_model.make_sentence(max_chars=max_chars, tries=100)
+        if max_chars <= 140
+        else text_model.make_sentence()
+    )
+
+    if sentence is None:
+        return generate_sentence(text_model, max_chars - 10)
+
+    return sentence.strip() + "..."
+
+def generate_model(input_text):
+    """
+    Generates a Markov model for the input text.
+    The state size is 1 if it's between 00:00:00 and 02:00:00, otherwise it's a random integer between 1 and 3.
+    """
+    now = datetime.datetime.now().time()
+    start_time = datetime.time(0, 0, 0)
+    end_time = datetime.time(2, 0, 0)
+
+    state_size = 1 if start_time <= now <= end_time else random.randint(1, 3)
+    text_model = markovify.Text(input_text, state_size=state_size)
+
+    return text_model, state_size
+
+
+# max_chars, text_model
+# 140        These are the voyages of the starship Enterprise. I object to intellect without
+#            discipline. Vulcanians do not speculate. I speak from pure logic. I fail to understa
+#            nd your romantic nostalgia for such a place.
+# Output:
+# I fail to intellect without discipline...
+def generate_sentence(text_model, max_chars):
+    """
+    Generates a sentence using the given text model and limits it to max_chars characters.
+    """
+    if max_chars < 20:
+        raise ValueError("max_chars should be at least 20")
+    if max_chars == 20:
+        # Return an empty string if max_chars is exactly 20, to avoid errors in markovify
+        return ""
+
+    if max_chars <= 140:
+        # Use make_short_sentence if max_chars is less than or equal to 140
+        sentence = text_model.make_sentence(max_chars=max_chars, tries=100)
+    else:
+        # Use make_sentence if max_chars is greater than 140
+        sentence = text_model.make_sentence()
+
+    # If no sentence was generated, try again with a smaller max_chars value
+    if sentence is None:
+        return generate_sentence(text_model, max_chars - 10)
+
+    # Add an ellipsis to the end of the sentence and return it
+    return sentence.strip() + "..."
+
+
+def remove_serial_numbers(sentences):
+    """
+    Removes the serial number from each sentence in the list of sentences.
+    """
+    cleaned_sentences = [
+        re.sub(r"^\d+[\.\)]\.?\s*", "", s).strip('"') for s in sentences
+    ]
+    return cleaned_sentences
+
+
+def read_source_file(file_path):
+    """
+    Reads the text file at the given file_path and returns the contents as a string.
+    """
+    try:
+        with open(file_path) as f:
+            input_text = f.read()
+    except OSError as e:
+        raise ValueError(f"Failed to read source text file: {e}")
+    return input_text
+
+
+if __name__ == "__main__":
+    # Set up file paths
+    dir_path = os.path.dirname(__file__)
+    source_file_path = os.path.join(dir_path, "txt", "spock.txt")
+
+    # Read the input text from the source file
+    input_text = read_source_file(source_file_path)
+
+    # Clean up the input text and create the Markov model
+    corpus = remove_serial_numbers(input_text.splitlines())
+    # print(corpus)
+    text_model, state_size = generate_model(corpus)
+
+    # Generate a sentence and print the output
+    try:
+        output_text = generate_sentence(text_model, 140)
+        print(output_text)
+    except ValueError as e:
+        print(e)
